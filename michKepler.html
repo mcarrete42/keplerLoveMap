@@ -1,0 +1,228 @@
+
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="UTF-8"/>
+        <title>Michu-Love-Map</title>
+
+        <!--Uber Font-->
+        <link rel="stylesheet" href="https://d1a3f4spazzrp4.cloudfront.net/kepler.gl/uber-fonts/4.0.0/superfine.css">
+
+        <!--MapBox css-->
+        <link href="https://api.tiles.mapbox.com/mapbox-gl-js/v1.1.1/mapbox-gl.css" rel="stylesheet">
+
+        <!-— facebook open graph tags -->
+        <meta property="og:url" content="http://kepler.gl/" />
+        <meta property="og:title" content="Large-scale WebGL-powered Geospatial Data Visualization Tool" />
+        <meta property="og:description" content="Kepler.gl is a powerful web-based geospatial data analysis tool. Built on a high performance rendering engine and designed for large-scale data sets." />
+        <meta property="og:site_name" content="kepler.gl" />
+        <meta property="og:image" content="https://d1a3f4spazzrp4.cloudfront.net/kepler.gl/kepler.gl-meta-tag.png" />
+        <meta property="og:image:type" content="image/png" />
+        <meta property="og:image:width" content="800" />
+        <meta property="og:image:height" content="800" />
+
+        <!-— twitter card tags -->
+        <meta name="twitter:card" content="summary_large_image">
+        <meta name="twitter:site" content="@uber">
+        <meta name="twitter:creator" content="@uber">
+        <meta name="twitter:title" content="Large-scale WebGL-powered Geospatial Data Visualization Tool">
+        <meta name="twitter:description" content="Kepler.gl is a powerful web-based geospatial data analysis tool. Built on a high performance rendering engine and designed for large-scale data sets.">
+        <meta name="twitter:image" content="https://d1a3f4spazzrp4.cloudfront.net/kepler.gl/kepler.gl-meta-tag.png" />
+
+        <!-- Load React/Redux -->
+        <script src="https://unpkg.com/react@16.8.4/umd/react.production.min.js" crossorigin></script>
+        <script src="https://unpkg.com/react-dom@16.8.4/umd/react-dom.production.min.js" crossorigin></script>
+        <script src="https://unpkg.com/redux@3.7.2/dist/redux.js" crossorigin></script>
+        <script src="https://unpkg.com/react-redux@7.1.3/dist/react-redux.min.js" crossorigin></script>
+        <script src="https://unpkg.com/styled-components@4.1.3/dist/styled-components.min.js" crossorigin></script>
+
+        <!-- Load Kepler.gl -->
+        <script src="https://unpkg.com/kepler.gl@2.3.2/umd/keplergl.min.js" crossorigin></script>
+
+        <style type="text/css">
+          body {margin: 0; padding: 0; overflow: hidden;}
+        </style>
+
+        <!--MapBox token-->
+        <script>
+          /**
+           * Provide your MapBox Token
+           **/
+          const MAPBOX_TOKEN = 'pk.eyJ1IjoibWFhcmluZXR0aSIsImEiOiJja2dtZzJsMWUwMHdvMnJtdTBhN3ZsdnE4In0.2En5ps08SFB82jnzXyubBw';
+          const WARNING_MESSAGE = 'Please Provide a Mapbox Token in order to use Kepler.gl. Edit this file and fill out MAPBOX_TOKEN with your access key';
+        </script>
+
+        <!-- GA: Delete this as you wish, However to pat ourselves on the back, we only track anonymous pageview to understand how many people are using kepler.gl. -->
+        <script>
+          (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+          (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+          m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+          })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+          ga('create', 'UA-64694404-19', {
+            'storage': 'none',
+            'clientId': localStorage.getItem('ga:clientId')
+          });
+          ga(function(tracker) {
+              localStorage.setItem('ga:clientId', tracker.get('clientId'));
+          });
+          ga('set', 'checkProtocolTask', null); // Disable file protocol checking.
+          ga('set', 'checkStorageTask', null); // Disable cookie storage checking.
+          ga('set', 'historyImportTask', null); // Disable history checking (requires reading from cookies).
+          ga('set', 'page', 'keplergl-html');
+          ga('send', 'pageview');
+        </script>
+      </head>
+      <body>
+        <!-- We will put our React component inside this div. -->
+        <div id="app">
+          <!-- Kepler.gl map will be placed here-->
+        </div>
+
+        <!-- Load our React component. -->
+        <script>
+          /* Validate Mapbox Token */
+          if ((MAPBOX_TOKEN || '') === '' || MAPBOX_TOKEN === 'PROVIDE_MAPBOX_TOKEN') {
+            alert(WARNING_MESSAGE);
+          }
+
+          /** STORE **/
+          const reducers = (function createReducers(redux, keplerGl) {
+            return redux.combineReducers({
+              // mount keplerGl reducer
+              keplerGl: keplerGl.keplerGlReducer.initialState({
+                uiState: {
+                  readOnly: true,
+                  currentModal: null
+                }
+              })
+            });
+          }(Redux, KeplerGl));
+
+          const middleWares = (function createMiddlewares(keplerGl) {
+            return keplerGl.enhanceReduxMiddleware([
+              // Add other middlewares here
+            ]);
+          }(KeplerGl));
+
+          const enhancers = (function craeteEnhancers(redux, middles) {
+            return redux.applyMiddleware(...middles);
+          }(Redux, middleWares));
+
+          const store = (function createStore(redux, enhancers) {
+            const initialState = {};
+
+            return redux.createStore(
+              reducers,
+              initialState,
+              redux.compose(enhancers)
+            );
+          }(Redux, enhancers));
+          /** END STORE **/
+
+          /** COMPONENTS **/
+          var KeplerElement = (function makeKeplerElement(react, keplerGl, mapboxToken) {
+            var LogoSvg = function LogoSvg() {
+              return react.createElement(
+                "div",
+                { className: "logo-container", style: {position: 'fixed', zIndex: 10000, padding: '4px'} },
+                  react.createElement(
+                    "svg",
+                    {
+                      className: "kepler_gl__logo",
+                      width: "107px",
+                      height: "21px",
+                      viewBox: "0 0 124 24"
+                    },
+                    react.createElement(
+                      "g",
+                      { transform: "translate(13.500000, 13.500000) rotate(45.000000) translate(-13.500000, -13.500000) translate(4.000000, 4.000000)" },
+                      react.createElement("rect", { x: "0", y: "6", transform: "matrix(2.535181e-06 1 -1 2.535181e-06 18.1107 6.0369)", fill: "#535C6C", width: "12.1", height: "12.1" }),
+                      react.createElement("rect", { x: "6", y: "0", transform: "matrix(2.535182e-06 1 -1 2.535182e-06 18.1107 -6.0369)", fill:"#1FBAD6", width: "12.1", height: "12.1" })
+                    ),
+                    react.createElement(
+                      "g",
+                      {},
+                      react.createElement("path", { fill:"#1FBAD6", d: "M39,8.7h2.2l-2.8,4.2l2.9,5.1H39l-2.4-4.2h-1.3V18h-2V5l2-0.1v7.3h1.3L39,8.7z" }),
+                      react.createElement("path", { fill:"#1FBAD6", d: "M42.4,13.3c0-1.5,0.4-2.7,1.1-3.5s1.8-1.2,3.1-1.2c1.3,0,2.2,0.4,2.8,1.1c0.6,0.7,0.9,1.8,0.9,3.3 c0,0.4,0,0.8,0,1.1h-5.8c0,1.6,0.8,2.4,2.4,2.4c1,0,2-0.2,2.9-0.6l0.2,1.7c-0.4,0.2-0.9,0.4-1.4,0.5s-1.1,0.2-1.7,0.2 c-1.5,0-2.6-0.4-3.3-1.2C42.8,16.1,42.4,14.9,42.4,13.3z M46.6,10.1c-0.7,0-1.2,0.2-1.5,0.5c-0.4,0.4-0.6,0.9-0.6,1.7h4 c0-0.8-0.2-1.4-0.5-1.7S47.2,10.1,46.6,10.1z" }),
+                      react.createElement("path", { fill:"#1FBAD6", d: "M57.1,18.2c-1,0-1.8-0.3-2.3-0.9l0,0l0,1.3v2.5h-2V8.7h1.5l0.3,0.9h0c0.3-0.3,0.7-0.6,1.2-0.7 c0.4-0.2,0.9-0.3,1.4-0.3c1.2,0,2.1,0.4,2.7,1.1c0.6,0.7,0.9,2,0.9,3.7c0,1.6-0.3,2.8-1,3.7C59.2,17.8,58.3,18.2,57.1,18.2z M56.7,10.3c-0.4,0-0.8,0.1-1.1,0.2c-0.3,0.2-0.6,0.4-0.8,0.7v4.3c0.2,0.3,0.4,0.5,0.7,0.7c0.3,0.2,0.7,0.3,1.1,0.3 c0.7,0,1.2-0.2,1.6-0.7c0.4-0.5,0.5-1.3,0.5-2.5c0-0.8-0.1-1.4-0.2-1.8s-0.4-0.7-0.7-0.9C57.6,10.4,57.2,10.3,56.7,10.3z" }),
+                      react.createElement("path", { fill:"#1FBAD6", d: "M63.2,16V5l2-0.1v10.8c0,0.3,0.1,0.5,0.2,0.6c0.1,0.1,0.3,0.2,0.6,0.2c0.3,0,0.6,0,0.9-0.1V18 c-0.4,0.1-1,0.2-1.6,0.2c-0.8,0-1.3-0.2-1.7-0.5S63.2,16.8,63.2,16z" }),
+                      react.createElement("path", { fill:"#1FBAD6", d: "M68.2,13.3c0-1.5,0.4-2.7,1.1-3.5c0.7-0.8,1.8-1.2,3.1-1.2c1.3,0,2.2,0.4,2.8,1.1c0.6,0.7,0.9,1.8,0.9,3.3 c0,0.4,0,0.8,0,1.1h-5.8c0,1.6,0.8,2.4,2.4,2.4c1,0,2-0.2,2.9-0.6l0.2,1.7c-0.4,0.2-0.9,0.4-1.4,0.5s-1.1,0.2-1.7,0.2 c-1.5,0-2.6-0.4-3.3-1.2C68.6,16.1,68.2,14.9,68.2,13.3z M72.4,10.1c-0.7,0-1.2,0.2-1.5,0.5c-0.4,0.4-0.6,0.9-0.6,1.7h4 c0-0.8-0.2-1.4-0.5-1.7S73,10.1,72.4,10.1z" }),
+                      react.createElement("path", { fill:"#1FBAD6", d: "M80.2,8.7l0.1,1.7h0c0.3-0.6,0.7-1.1,1.1-1.4c0.4-0.3,1-0.5,1.6-0.5c0.4,0,0.7,0,1,0.1l-0.1,2 c-0.3-0.1-0.7-0.2-1-0.2c-0.7,0-1.3,0.3-1.7,0.8c-0.4,0.5-0.7,1.2-0.7,2.1V18h-2V8.7H80.2z" }),
+                      react.createElement("path", { fill:"#1FBAD6", d: "M83.8,17c0-0.8,0.4-1.2,1.2-1.2c0.8,0,1.2,0.4,1.2,1.2c0,0.8-0.4,1.1-1.2,1.1C84.2,18.2,83.8,17.8,83.8,17z" }),
+                      react.createElement("path", { fill:"#1FBAD6", d: "M88.5,18.7c0-0.8,0.4-1.4,1.2-1.8c-0.6-0.3-0.9-0.8-0.9-1.5c0-0.7,0.4-1.2,1.1-1.6c-0.3-0.3-0.6-0.6-0.7-0.9 c-0.2-0.4-0.2-0.8-0.2-1.3c0-1,0.3-1.8,0.9-2.3c0.6-0.5,1.6-0.8,2.8-0.8c0.5,0,1,0,1.4,0.1c0.4,0.1,0.8,0.2,1.1,0.4l2.4-0.2v1.5 h-1.5c0.2,0.4,0.2,0.8,0.2,1.3c0,1-0.3,1.7-0.9,2.2s-1.5,0.8-2.7,0.8c-0.7,0-1.2-0.1-1.6-0.2c-0.1,0.1-0.2,0.2-0.3,0.3 c-0.1,0.1-0.1,0.2-0.1,0.4c0,0.2,0.1,0.3,0.2,0.4c0.1,0.1,0.3,0.2,0.6,0.2l2.7,0.2c1,0.1,1.7,0.3,2.2,0.6c0.5,0.3,0.8,0.9,0.8,1.7 c0,0.6-0.2,1.1-0.5,1.5c-0.4,0.4-0.9,0.8-1.5,1c-0.7,0.2-1.5,0.4-2.4,0.4c-1.3,0-2.3-0.2-3-0.6C88.8,20.1,88.5,19.5,88.5,18.7z M95.1,18.4c0-0.3-0.1-0.5-0.3-0.7s-0.6-0.2-1.1-0.3l-2.7-0.3c-0.2,0.1-0.4,0.3-0.5,0.5c-0.1,0.2-0.2,0.4-0.2,0.6 c0,0.4,0.2,0.8,0.5,1c0.4,0.2,1,0.3,1.8,0.3C94.2,19.5,95.1,19.2,95.1,18.4z M94.3,11.5c0-0.6-0.1-1-0.4-1.2 c-0.3-0.2-0.7-0.3-1.3-0.3c-0.7,0-1.1,0.1-1.4,0.3c-0.3,0.2-0.4,0.6-0.4,1.2s0.1,1,0.4,1.2c0.3,0.2,0.7,0.3,1.4,0.3 c0.6,0,1.1-0.1,1.3-0.4S94.3,12,94.3,11.5z" }),
+                      react.createElement("path", { fill:"#1FBAD6", d: "M99.4,16V5l2-0.1v10.8c0,0.3,0.1,0.5,0.2,0.6c0.1,0.1,0.3,0.2,0.6,0.2c0.3,0,0.6,0,0.9-0.1V18 c-0.4,0.1-1,0.2-1.6,0.2c-0.8,0-1.3-0.2-1.7-0.5S99.4,16.8,99.4,16z" })
+                    )
+                  )
+                );
+              };
+
+            return function App() {
+              var rootElm = react.useRef(null);
+              var _useState = react.useState({
+                width: window.innerWidth,
+                height: window.innerHeight
+              });
+              var windowDimension = _useState[0];
+              var setDimension = _useState[1];
+              react.useEffect(function sideEffect(){
+                function handleResize() {
+                  setDimension({width: window.innerWidth, height: window.innerHeight});
+                };
+                window.addEventListener('resize', handleResize);
+                return function() {window.removeEventListener('resize', handleResize);};
+              }, []);
+              return react.createElement(
+                'div',
+                {style: {position: 'absolute', left: 0, width: '100vw', height: '100vh'}},
+                  react.createElement(keplerGl.KeplerGl, {
+                  mapboxApiAccessToken: mapboxToken,
+                  id: "map",
+                  width: windowDimension.width,
+                  height: windowDimension.height
+                })
+              )
+            }
+          }(React, KeplerGl, MAPBOX_TOKEN));
+
+          const app = (function createReactReduxProvider(react, reactRedux, KeplerElement) {
+            return react.createElement(
+              reactRedux.Provider,
+              {store},
+              react.createElement(KeplerElement, null)
+            )
+          }(React, ReactRedux, KeplerElement));
+          /** END COMPONENTS **/
+
+          /** Render **/
+          (function render(react, reactDOM, app) {
+            reactDOM.render(app, document.getElementById('app'));
+          }(React, ReactDOM, app));
+        </script>
+        <!-- The next script will show how to interact directly with Kepler map store -->
+        <script>
+          /**
+           * Customize map.
+           * In the following section you can use the store object to dispatch Kepler.gl actions
+           * to add new data and customize behavior
+           */
+          (function customize(keplerGl, store) {
+            const datasets = [{"version":"v1","data":{"id":"zflj27xqc","label":"michellelovemap2.csv","color":[143,47,191],"allData":[[1,-39.032005,-67.589376,241,"General Roca","Julián","Pawly","jmpawly75@hotmail.com","Bueno Michu sabes que Te Amo mucho. Que estoy orgulloso de todo lo que has logrado.  Por sobre todas las cosas...quiero que se cumplan todos tus deseos y que seas inmensamente FELIZ.!!! Que tengas un hermoso día.!! Feliz Cumple Hermanita.!!!"],[2,39.862208,-4.025079,285,"Toledo","Julita","García","juliagarcia1986@gmail.com","Muchísimas felicidades  pero sobre todo  mucho más ratos juntas  en Segovia  en Manchester  en Liverpool  en Madrid  en Toledo  en tu casa  en la mia  por cam  en directo o por telepatía. Te quiero mucho!!!!!!!! Y espero poder seguir celebrando tu cumple a tu lado muchisimos más años."],[3,40.463577,-3.686643,235,"Madrid","Jaime","López-Alvarado","jimmylopez444@gmail.com","Muchas felicidades Michelle! Espero que pases un día genial  que penita no estar todos y tirarte de las orejas! Aún me acuerdo de la noche que viniste con los chicos del MEO a Kapital las risas que nos echamos! Un besito muy fuerte! 😘"],[4,42.238994,-8.723304,13,"Vigo","Maru","Paseiro","mnemosine1806@gmail.com","Parabéns ! 🥳"],[5,-34.667616,-58.726179,26,"Merlo","Dorita y Horacio","Ceccotti Goñi","gonihoracio@gmail.com","La despedida del año viejo"],[6,53.217315,6.562197,101,"Groningen","Manu","Segura","masegal13@hotmail.com","Felicidades compi! Primero coincidimos en la uni  luego en el máster  que será lo próximo... un beso!"],[7,-34.57889,-58.436052,179,"Buenos Aires","Adrián","Makarski","a_makarski@hotmail.com","Felicidades querida amiga infinita!! Que los cumplas muy feliz 🎊🎉Te extraño y extraño mucho compartir lindos momentos con vos. Te mando un beso gigante. Te quiero mucho!! 🍻💚💚"],[8,-34.570268,-58.499483,300,"Buenos Aires","Horacio","Orellano","horellanofotos@gmail.com","Tengo la dicha que mi infancia esté plagada de recuerdos con Michu. La distancia tampoco pudo con nuestra amistad. Ya de grandes  en una de sus visitas a Argentina  recuerdo una gran noche en la que salimos a bailar. Las fotos mentales de esa noche me siguen emocionando y siempre me sacan sonrisas ❤"],[9,40.386602,-3.666694,496,"Madrid","Lucía","Martínez","luci.dmartinezr@gmail.com","Desde que te conocí cuando cumplí años y fui a tu casa con Marina  me pareciste una persona maravillosa y me sentí muy cómoda contigo. (Tanto Marina como tú) Te abriste de brazos cuando estaba mal y me ofreciste un lugar en tu casa. Cuando salimos al café Matilda y pasamos la tarde conversando  te conocí más y realmente ha crecido en mi genuino cariño por ti (y Marina). Gracias por ser como eres y espero poder en algún momento celebrarlo contigo. Te mereces lo mejor  feliz cumpleaños ☺️✨💜🖤"],[10,36.489489,-4.751079,108,"Marbella","Tomás Goñi","Sancho","tomasote07@gmail.com","Cuando fuimos al \"zoologico\" y el león rugió  y yo me intenté quitar el miedo y dije... \"¡es bueno el león!\""],[11,40.925967,-4.119662,309,"Segovia","Clau","Carretero","moritiny@gmail.com","🥳🥳🥳🥳🥳¡Muchas felicidades  Michelito! 🥳🥳🥳🥳🥳\r\nGracias por compartir un año más al lado de Maína (aunque entre tú y yo sepamos que es por la paguita)💞💞💞💞\r\nAunque este año no haya habido borrachera del orgullo  siempre nos quedará la excursión en busca de baño el año pasado 🤣🤣 \r\nDisfruta de tu día🥰"],[12,64.117455,-21.845306,1059,"Reykjavik .. hace frío","Susana Dubrowsky (por si hay otras ja!)","uff.. lo puse antes","sdubrowsky@gmail.com","Linda Michu  tan lejos y sin poder festejar con unos ricos \"pylsur\" .. Ya vendrán tiempos mejores y podremos dejarnos llevar por unas alcachofas o unos postres increibles en un restaurante que estoy desesperadamente buscando en Google maps y no encuentro !  (en un callejón divino ahi en \"mi barrio\" .. cerca de la calle Hermosilla ..) ahhhh qué lindos recuerdos!! uf... muy gastronómicos mis recuerdos jaja!! :)\r\nTengo otros también  no creas que solo pienso en comidas!  mi cumpleaños en una quinta en Buenos Aires (asado !!)  El cumple de Maria en Choele.. (más asado !! ) \r\nQue te quiero mucho ! que esto es broma .. sirve para recordar cosas lindas compartidas  que ojalá vuelvan a nuestras vidas dentro de no mucho !!\r\nMis 3 deseos:\r\n1. Deseo que pases un día lindo lindo leyendo muchos mensaje con mimos y amor \r\n2. Deseo que tengas mucha paciencia y buen ánimo para seguir bancando esta realidad\r\n3. Deseo que seas siempre muy feliz y conserves esa sonrisa divina - \"este momento ha sido auspiciado por Invisalign\" -  jajaja\r\nTe quierooooo!! Feliz cumple !!!"],[13,40.43145,-3.671761,325,"Madrid","Daniel","Er Geni","mgenique@yahoo.es","Paulina!!! La mujer de mi sosia!! Me encanta que formes parte de mi vida y de mi familia xq la marinoni es muxa tela!! Espero que este año venga cargado de negocios y éstos traigan viajes y miles de cocidos around Spain! Sos una tia 10 y me alegro que formes parte de la familia de los Genis #mecopa #pormasnegociosjuntos #❤️"],[14,42.238216,-8.728038,876,"Vigo","Uxia","Vazquez","uxiavs@gmail.com","Por donde empezar....\r\nMixu es esa tía que me hizo comprender que el esfuerzo da su fruto  que la vida es para comérsela  que puedes hacer un póster para la Uni de Bocasecamaaaaaan.... (hablando de xerostomía  me meooo). Que te puedes perder yendo en Vespa a Villanueva a ver a tu amiga y no pasa nada  porque Mixu es puro amor. \r\n\r\n\r\nQue me meo de la risa pensando en ella vestida de sumo  diciéndome que aquel tío me mira(sea cierto o no)  que me vaya a Machestá a verla que sale a las 17!\r\n\r\nQue su mujer mola infinito(es así 💜) y que  joder... Qué suerte tengo de tener a Mixu!!!! ❤️\r\n\r\n\r\nTotal  que no hay kms que no recorrería por ella. Porque es maravillosa: lista  diver  crítica  interesante  bailonga  boluda  risueña  malditamente adorable   incisiva  muy de molar joer!!!🤪\r\n\r\n\r\nPues eso  que no sé qué decir de ti  mi cariño. Te quiero infinito. Feliz cumple Mixuuuu💜💜💜💜"],[15,40.310804,-3.729618,16,"Madrid","Alberto","del Baño","alberto.del.bano@gmail.com","Simplemente ELLA"],[16,40.407424,-3.677213,96,"Madrid","Dominique","Tijssen","dominique.tijssen91@gmail.com","Espero que estos 34 sean grandiosos y no estés cansancio !!! Te extraño compi de box favorita 💛"],[17,40.385969,-3.699819,173,"Madrid","Esther","Vázquez","esthy_vc@hotmail.com","Michii! Ya habrá tiempo de celebrar  y de más esquís nordicos y supuestas caminatas con raquetas por Gredos.\r\nPor ahora tendrás que conformate con los patines 😁\r\nFelices 34!!"],[18,40.427791,-3.687394,113,"Madrid","Sofía","Pintado","s.pintadocancela@gmail.com","Michhh muchísimas felicidades!!! Espero que tengas un día muy especial y que lo disfrutes mucho! Un besazo enorme"],[19,40.375038,-3.610165,5798,"Madrid","Patri","Palomeque","p_palomeque@yahoo.es","Hace un año  en un encuentro de Mujeres en Moto apareció inesperadamente ¡¡¡la mujer de Marina!!! Todas habíamos oído hablar de ella mil veces  pero nunca la habíamos visto. No sé muy bien por qué acabamos conectando y  entre que Marina ese finde estaba modo “off”  y que ella hizo sus propios méritos integrándose como la que más  dejó de ser la \"mujer de Marina\" para pasar a ser Michelle  esa chica taaaaaan genial con la que nos lo pasamos tan bien en aquel encuentro de Mujeres en Moto. \r\n\r\nVisto esto  y coincidiendo con que estábamos organizando un viaje motero en petit comité en Güerres  el pueblo de Sandra  con nuestra gente más cercana  las invitamos a venir para que entraran a formar parte del grupo de los más guays del Paraguay. Y allí  aquella Argentina volvió a integrarse tan bien que hasta acabó escanciado sidra y agarrando una borrachera épica a base de la bebida local. Así se hace Michu!! Risas  bailes  más risas  abrazos  besos  la cucaracha  otra vez la cucaracha  vasos de sidra comunitarios y  mientras tanto  el coronavirus bailando por ahí a nuestro alrededor y nosotros sin saberlo. Aunque milagrosamente  ninguno de nosotros bailó con él  porque realmente habría hecho mella en el grupo entero!!\r\n\r\nVuelta a Madrid y cada uno a sus vidas  pero joder!! Nos confinaron!! Puto coronavirus!!!! A la mierda los trabajos  la vida cotidiana y normal  las salidas  los encuentros entre amigos y familia  el vernos  el abrazarnos  el compartir… La vida se paró de repente y parecía que el mundo había dejado de dar vueltas...Pero bueno  siempre hay que ver el lado bueno de las cosas porque hasta en lo más adverso hay magia si uno sabe mirar bien. Resultó que como no podíamos vernos  empezamos a hablar unos con otros por Zoom y  de entre todas esas videoconferencias con tanta gente  se estableció una rutina sin darnos cuenta: todos los sábados teníamos cena con Marina y Michelle y pasábamos horas y horas hasta bien entrada la madrugada hablando  riendo  contándonos la vida y  a veces  desgarrando un poco el alma contándonos aquellas cosas que son tan nuestras  que casi nadie puede ver. Como uno desnuda el alma y confiesa sólo con los amigos que te conocen bien. Curioso  verdad?\r\n\r\nPues bien  en medio de ese maldito encierro  era el cumple de mi mamá y Michelle me presionó mucho para dejarla acercarse a su casa a llevarle a mi madre una carta y una caja de bombones en nombre de sus 3 hijos. “Ojalá yo pudiera tener cerca a mi madre para hacerle esto!” – Me dijo - En serio me tuvo que convencer para que la dejara hacer esto? Increíblemente  sí. En cuestión de horas  recibí una llamada de mi madre mucho más allá que emocionada dándome las gracias por haberla hecho tan feliz en la distancia y en un momento tan difícil para todos. De esta forma tan sencilla y sin querer  Michelle me descubrió que tenía que aprender a querer mejor a mis propios padres  y que aunque ellos nunca piden ni esperan nada  con pequeños detalles les podía construir mini recuerdos felices e inolvidables y hacer que se sintieran afortunados de tener a sus hijos  amados y cuidados por ellos. ¿Hay algo mejor que cuidar así de las personas importantes de nuestra vida? No lo creo! Lección aprendida. Grande Michu. Un gesto así no se olvida nunca por el grado de humanidad y amor que lleva intrínseco. Esa chica volvía a demostrar ser alguien especial. \r\n\r\n\"Sueño con ir de vacaciones a una playa  hacer alguna actividad por la mañana tipo surf  pasar el día en la playa y no hacer nada más\" dijo en una de esas cenas de sábado por videoconferencia. \r\n\"Conocemos el sitio adecuado\" contestamos Sandra y yo dando saltos  dadas las circunstancias  no había plan que nos pudiera gustar más! Y sin apenas conocernos de nada  como cuatro buenas inconscientes impulsivas  decidimos irnos juntas a la aventura vacacional. Hicimos las reservas pertinentes y nos dijimos  “Aquí hay dos caminos: esto puede ser un divorcio para siempre o un viaje inolvidable”. Teníamos que arriesgarnos a descubrirlo! Salimos del confinamiento  retomamos nuestras vidas (a medias) y pasado el tiempo  partimos hacia Cádiz. Por el camino  de nuevo reímos  lloramos  cantamos  nos emocionamos y seguimos descubriéndonos. Las sombras y las luces. Cómo debe ser  aprender a querer  pero quererse con todo. Como cuando remás. Remá con todo  si no  no coges la ola. Pues Cádiz resultó ser un oasis de playa  sol  actividades  gente bonita  encuentros inesperados y mucha  mucha diversión. Qué dura fue la vuelta….tanto que programamos un viaje lo antes posible coincidiendo con el cumple de Michelle!! Qué buena fecha!!! Las mismas personas  el mismo lugar y el mismo plan. Dicen que no debes volver al sitio donde fuiste feliz  pero una vez más  teníamos que desafiar las leyes del universo. Y esta historia tendrá un final que ya contaré más adelante  pero seguro que es más de lo mismo y se resume de la misma manera: Felicidad  amistad y mucha risa. \r\n\r\nHa sido cuestión de un solo año  pero en este tiempo y en estas circunstancias tan raras  supimos encontrar la oportunidad de la magia. Cuando me pregunten qué saqué yo del coronavirus  diré que a una chica extraordinaria  intrépida  llena de amor  a veces de miedos (aunque sean infundados) contra los que lucha cada día  increíblemente inteligente y brillante  respetuosa  con un corazón que se le desborda y siempre capaz de sacarnos una carcajada con sus audaces ocurrencias en el momento menos esperado. \r\n\r\nEsta es mi historia contigo  así te he ido descubriendo según ha ido pasando el tiempo. En cada ocasión  mis recuerdos contigo son maravillosos. Deseo que tu nueva vuelta al Sol venga cargada de amor  ilusiones renovadas  nuevas experiencias  aventuras y  sobre todo  que nosotras sigamos a tu lado. \r\nFeliz cumpleaños Michu!! Te queremos!!!! Muchoooooo!!!"],[20,45.708849,9.407919,64,"Italia 🇮🇹","Elena","Bisignani","elena-bisignani@hotmail.it","Felicidades a la compañera mejor del mundo🙃 Un besazo de Italia"],[21,40.410715,-3.713955,101,"Madrid","Indira","Diaz","indiradiazromero@yahoo.es","Felicidades compañera  que la vida te regale salud y amor para que puedas conseguir todos tus deseos."],[22,-39.033809,-67.580899,168,"Río negro","Martina y Lourdes","Pawly","martupawly@gmail.com","Tía  queremos desearte un muy feliz cumpleaños a la distancia  que seas muy feliz siempre❤️\r\nTe extrañamos mucho y esperamos poder verte pronto.\r\nTe amamos mucho.❤️❤️❤️❤️"],[23,40.308934,-3.731387,359,"Madrid","Tati","Viejo","ta_0411@hotmail.com","Ella y su máquina de hacer pegatinas que le hace única  sólo ella sería feliz haciéndote una pegatina para tu buzón y eso me hace quererte a muerte. Los cafés con sabor avellana nunca me hubieran sabido tan ricos sin estar tú para tomármelos. Gracias por descubrirme el café con helado del burger  estoy deseando saborear uno pronto. Que seas feliz amiga!! 💜"],[24,43.362114,-8.410716,179,"A Coruña","Noelia","López","nolitarocha@gmail.com","Siempre comeremos pepitos de ternera a pesar de que pasen 20 años. No meteremos el isostar en la nevera y comeremos helado en mi casa de oleiros . Te quiero un millón 💞💞😘💞😍😘"],[25,53.480814,-2.242433,253,"Manchester","Nitisha","Gopaul","nitisha.gopaul@gmail.com","I remember first meeting Michelle at Friday drinks and shortly after at the Spanish festival  she showed me this celebrity reporter she thinks I look like  made me feel so nice! And that's pretty much Michu  always making people feel valued and loved ♥️"],[26,-34.587361,-58.424224,294,"Buenos Aires","Fran Pecot","Pecot","franpecot@gmail.com","Me encantaría que nos encontremos en alguna parte del planeta  con todos los primos  tías y tíos  a comer bocatas  tomar mates  cantar  pasear  ir a la playa (o a skiar 🤔)  contar historias  reírnos y abrazarnos!!!\r\nTe quiero mucho prima  lo sabes  y espero que pases un hermoso cumpleaños! ❤❤❤"],[27,25.273528,51.509765,166,"Doha","TJ","García","paracurarte@gmail.com","Me acuerdo de cuando nos vimos en segovia y hablamos de la espalda de marina y las tres nos pusimos casi a llorar...ahí vi cuánto quería a Marina y lo lindas que eran"],[28,40.92656,-4.11939,362,"Segovia","Friky","Vallejo","vaqy@hotmail.com","Que tengas un año maravilloso \r\nQue consigas todos tus sueños \r\nQue todo eso lo hagas con los que mas quieres\r\nQue tu vales mucho!!!! Lista  guapa cariñosisima  divertida   entrañable  trabajadora incansable....\r\nQue te interesas por plantas  abejas  musica  bailes ....\r\nY que naciste un día especial para todos los Vallejo....gracias por estar ahi....no cambies!!!!"],[29,40.387073,-5.767711,25,"Ljubljana","Juanpepe","Wtf","juanpepe_carretero@hotmail.es","Feliz feliz no cumpleaños"],[30,-34.612882,-58.419182,110,"Capital Federal","Lu","Rabinovich dotro","luciadotro@gmail.com","Felicidades Michu!....no mentira .....te amo con el corazon rompiendo todos  los límites de tiempo y espacio💚"],[31,40.926576,-4.120665,35,"Segovia","Ricardo","Carretero","ricardocarreterogomez@gmail.com","Mmuucchhaass ffeelliicciiddaaddeess"],[32,40.507672,-3.693713,201,"Madrid","Marta","Hidalgo","martahial@gmail.com","Desde mis primeras tardes en Manchester  robando de vuestra WiFi... hasta nuestra más reciente cena juntas  post-confinamiento!! Espero seguir acumulando muchos nuevos recuerdos juntas. Eres lo más! :)"],[33,41.651844,-0.886645,75,"Zaragoza","Karu","Peinado","karuzgz@gmail.com","Michelle quiero bailar  surfear  reír y disfrutar mucho más tiempo contigo!"],[34,-34.581135,-58.457282,90,"Ciudad de Buenos Aires","Paula","Rossi","Paularossisancho@gmail.com","Feliz cumple michu hermosa!! Te quiero mucho y espero que tengas un día super bello 💖💖💖"],[35,36.490463,-4.750696,57,"Marbella","Favio","Goñi","favargo@hotmail.com","Por muchos más risas y ascensores!!!! Lo demás es al pedo"],[36,-39.290553,-65.664063,284,"Choele ahorita","La tía Marisol","De Argentina  Manchester y España","marisolsanchouzcudun@gmail.com","¡Cómo te he querido  te quiero y te querré   Reina Michelle de los Reinos Compartidos! \r\nDeseo que a partir de esta nueva revolución de tu sol  comiences a cosechar los merecidos frutos de tanto que has sembrado con constancia  amor  esfuerzo   y creatividad. \r\nLaviuuuu hasta el cielo!"],[37,-34.623189,-58.400692,199,"Buenos Aires","Daniela Natali","Gomez","danielanatali.gomez@gmail.com","Feliz cumple Michu! Todavía recuerdo de cuando andábamos en bici  nos sentamos en la puerta del colegio y recorríamos el barrio. Mi amiga más antigua y querida te deseo siempre la mayor felicidad!!!!"],[38,42.227419,-8.732701,244,"Vigo","Sara","Rguez. Porto","sararo360@gmail.com","Sobre todo recuerdo esas noches de risas en el náutico y bailes en el Vogue  pero sin olvidarme de la radio y del día a día en el insti. \r\nSi tuviera fotos de esa época te haría un vídeo con \"Never leave you\" de fondo 😋 \r\nNo cambies nunca 😉😘😘"],[39,36.501437,-4.957416,215,"Marbella","Paula P","Plaisant","paulaplaisant@gmail.com","Nos conocemos hace tantooosss años (Record guiness!). Nos perdimos un poco el rastro durante un tiempo peeo por suerte la vida nos volvió a hacer \"coincidir\" del mismo lado del mapa y eso me hizo y hace muy feliz :)"],[40,-40.813562,-62.993215,35,"Viedma","Gloria","de la rama Sancho Uzcudún","gloriamariasancho@gmail.com","lo mejor para vos Michu Bonitaaa!!!"],[41,-34.617585,-58.361408,85,"Buenos Aires  Capital","Carlos (tío)","Migliore","carlosamigliore@gmail.com","La recuerdo recién nacida  cabía en el hueco de mis dos manos. Desde entonces la amo."],[42,-34.605183,-58.366565,179,"Buenos Aires","María Cecilia","Lipp","cecilialipp@ciudad.com.ar","Es una persona tan especial que no me alcanza un cuaderno para escribir todas las cosas hermosas que recuerdo de ella. La quiero con todo mi corazón y quisiera tenerlas más cerca."],[43,37.383821,-5.990359,66,"Sevilla","Ana Leon","Leer n","a.leond13@gmail.com","Las risas con Michu  su positividad  los bailes  ella es todo amor"]],"fields":[{"name":"id","type":"integer","format":"","analyzerType":"INT"},{"name":"point_lat","type":"real","format":"","analyzerType":"FLOAT"},{"name":"point_lon","type":"real","format":"","analyzerType":"FLOAT"},{"name":"Radius","type":"integer","format":"","analyzerType":"INT"},{"name":"Ciudad","type":"string","format":"","analyzerType":"STRING"},{"name":"nombre","type":"string","format":"","analyzerType":"STRING"},{"name":"apellido","type":"string","format":"","analyzerType":"STRING"},{"name":"email","type":"string","format":"","analyzerType":"STRING"},{"name":"historia","type":"string","format":"","analyzerType":"STRING"}]}}];
+            const config = {"version":"v1","config":{"visState":{"filters":[],"layers":[{"id":"crj4pkd","type":"point","config":{"dataId":"zflj27xqc","label":"point","color":[41,76,181],"columns":{"lat":"point_lat","lng":"point_lon","altitude":null},"isVisible":true,"visConfig":{"radius":10,"fixedRadius":false,"opacity":0.64,"outline":false,"thickness":2,"strokeColor":[117,222,227],"colorRange":{"name":"Ice And Fire","type":"diverging","category":"Uber","colors":["#0198BD","#49E3CE","#E8FEB5","#FEEDB1","#FEAD54","#D50255"]},"strokeColorRange":{"name":"Global Warming","type":"sequential","category":"Uber","colors":["#5A1846","#900C3F","#C70039","#E3611C","#F1920E","#FFC300"]},"radiusRange":[0,438.6],"filled":true},"hidden":false,"textLabel":[]},"visualChannels":{"colorField":null,"colorScale":"quantile","strokeColorField":null,"strokeColorScale":"quantile","sizeField":{"name":"Radius","type":"integer"},"sizeScale":"sqrt"}}],"interactionConfig":{"tooltip":{"fieldsToShow":{"zflj27xqc":[{"name":"nombre","format":null},{"name":"historia","format":null}]},"compareMode":false,"compareType":"absolute","enabled":true},"brush":{"size":15.2,"enabled":false},"geocoder":{"enabled":false},"coordinate":{"enabled":false}},"layerBlending":"additive","splitMaps":[],"animationConfig":{"currentTime":null,"speed":1}},"mapState":{"bearing":0,"dragRotate":false,"latitude":49.341817656914785,"longitude":-95.78715937559588,"pitch":0,"zoom":1.5592860589730209,"isSplit":false},"mapStyle":{"styleType":"dark","topLayerGroups":{"label":true},"visibleLayerGroups":{"label":false,"road":true,"border":true,"building":false,"water":true,"land":true,"3d building":false},"threeDBuildingColor":[9.665468314072013,17.18305478057247,31.1442867897876],"mapStyles":{}}}};
+
+            const loadedData = keplerGl.KeplerGlSchema.load(
+              datasets,
+              config
+            );
+
+            store.dispatch(keplerGl.addDataToMap({
+              datasets: loadedData.datasets,
+              config: loadedData.config,
+              options: {
+                centerMap: false
+              }
+            }));
+          }(KeplerGl, store))
+        </script>
+      </body>
+    </html>
+  
